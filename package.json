@@ -1,0 +1,16 @@
+{
+  "name": "cashflow-ai",
+  "version": "1.0.0",
+  "main": "ai/index.js",
+  "scripts": {
+    "start": "node ai/final_service.js",
+    "demo": "node ai/interactive_demo.js",
+    "test": "node ai/enhanced_tests.js",
+    "test:production": "node ai/final_service.js",
+    "api": "node ai/api.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.0",
+    "express": "^5.1.0"
+  }
+}

@@ -38,6 +38,9 @@ coverage/
 ehthumbs.db
 Thumbs.db
 
+# Uploads
+uploads/
+
 # IDE files
 .vscode/
 .idea/

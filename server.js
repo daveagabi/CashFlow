@@ -30,6 +30,7 @@ app.use('/api/voice', require('./routes/voice'));
 app.use('/api/sync', require('./routes/sync'));
 app.use('/api/sharing', require('./routes/sharing'));
 app.use('/api/logs', require('./routes/logs'));
+app.use('/api/upload-audio', require('./routes/upload-audio'));
 
 // Health check
 app.get('/health', (req, res) => {

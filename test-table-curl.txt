@@ -1,0 +1,13 @@
+ServiceNow CashFlow Table Test Commands
+
+# Test 1: Check if table exists (GET request)
+curl -u "admin:7WXg$8eQoo@W" "https://dev192269.service-now.com/api/now/table/x_1851157_cashflow_cashflow_logs?sysparm_limit=1"
+
+# Test 2: Create a record (POST request)
+curl -u "admin:7WXg$8eQoo@W" -X POST "https://dev192269.service-now.com/api/now/table/x_1851157_cashflow_cashflow_logs" -H "Content-Type: application/json" -d '{"u_business":"Test Trader","u_date":"2025-10-24","u_income":50000,"u_expense":20000,"u_profit":30000,"u_debts":"[{\"name\":\"John\",\"amount\":5000}]","u_synced":true}'
+
+Expected Results:
+- Test 1: Should return 200 status with empty or existing records
+- Test 2: Should return 201 status with sys_id of created record
+
+If successful, your ServiceNow integration is ready!

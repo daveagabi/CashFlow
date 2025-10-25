@@ -1,0 +1,15 @@
+ServiceNow API Test Commands
+
+# Test 1: Create cashflow entry (run in Git Bash or PowerShell)
+curl -u "admin:7WXg$8eQoo@W" -H "Content-Type: application/json" -d "{\"u_business\":\"Test Trader\",\"u_date\":\"2025-10-24\",\"u_income\":50000,\"u_expense\":20000,\"u_profit\":30000}" https://dev192269.service-now.com/api/now/table/u_cashflow_logs
+
+# Test 2: Create incident
+curl -u "admin:7WXg$8eQoo@W" -H "Content-Type: application/json" -d "{\"short_description\":\"CashFlow test incident\",\"description\":\"Test incident from API\"}" https://dev192269.service-now.com/api/now/table/incident
+
+Expected Response: 
+- Status 201 (Created) or 200 (OK)
+- JSON response with sys_id field
+
+If you get 404 error: The u_cashflow_logs table needs to be created first in ServiceNow
+If you get 401 error: Check credentials
+If you get 403 error: Check user permissions

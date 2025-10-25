@@ -1,14 +1,101 @@
-// src/components/VoiceRecorder.js - WITH EXPO SPEECH
-import React, { useState } from 'react';
+// src/components/VoiceRecorder.js - WITH EXPO SPEECH AND WHISPER RECORDING
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { Audio } from 'expo-av';
 import * as Speech from 'expo-speech';
-import { parseTranscript } from '../utils/api';
+import { parseTranscript, uploadAudioToWhisper } from '../utils/api';
 import { saveTransaction } from '../utils/storage';
 
-const VoiceRecorder = ({ onTranscriptReceived, onTransactionSaved }) => {
+const VoiceRecorder = ({ onTranscriptReceived, onTransactionSaved, useRealRecording = false }) => {
   const [transcript, setTranscript] = useState('');
   const [isParsing, setIsParsing] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  
+  // Real recording states
+  const [recording, setRecording] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Request audio permissions on component mount
+  useEffect(() => {
+    if (useRealRecording) {
+      (async () => {
+        const { status } = await Audio.requestPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission required', 'Sorry, we need audio permissions to make this work!');
+        }
+      })();
+    }
+  }, [useRealRecording]);
+
+  // Real audio recording functions
+  const startRecording = async () => {
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      setRecording(recording);
+      setIsRecording(true);
+    } catch (err) {
+      console.error('Failed to start recording', err);
+      Alert.alert('Recording Error', 'Failed to start recording');
+    }
+  };
+
+  const stopRecording = async () => {
+    if (!recording) return;
+
+    setIsRecording(false);
+    setIsProcessing(true);
+
+    try {
+      await recording.stopAndUnloadAsync();
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+      });
+
+      const uri = recording.getURI();
+      console.log('Recording stopped, URI:', uri);
+
+      // Send to Whisper via backend
+      console.log('Attempting to upload audio to backend...');
+      const transcriptText = await uploadAudioToWhisper(uri);
+      console.log('Backend response:', transcriptText);
+      
+      if (transcriptText) {
+        setTranscript(transcriptText);
+        onTranscriptReceived && onTranscriptReceived(transcriptText);
+
+        // Parse and save the real transcript
+        try {
+          const parsedTransaction = await parseTranscript(transcriptText);
+          await saveTransaction(parsedTransaction);
+          onTransactionSaved && onTransactionSaved(parsedTransaction);
+
+          Alert.alert(
+            '💰 Transaction Saved!',
+            `${parsedTransaction.type === 'income' ? 'Income' : 'Expense'}: ₦${parsedTransaction.amount.toLocaleString()}\n${parsedTransaction.description}`,
+            [{ text: 'OK' }]
+          );
+        } catch (error) {
+          Alert.alert('Success', `Transcript: ${transcriptText}`);
+        }
+      } else {
+        throw new Error('No transcript received');
+      }
+    } catch (error) {
+      console.error('Error in stopRecording:', error);
+      Alert.alert('Processing Error', `Failed to process audio: ${error.message}\n\nCheck if backend is running at 192.168.0.104:3000`);
+    } finally {
+      setRecording(null);
+      setIsProcessing(false);
+    }
+  };
 
   // Demo function with speech feedback
   const handleVoicePress = async () => {
@@ -85,6 +172,38 @@ const VoiceRecorder = ({ onTranscriptReceived, onTransactionSaved }) => {
     setIsSpeaking(false);
   };
 
+  // Choose which mode to render
+  if (useRealRecording) {
+    return (
+      <View style={styles.container}>
+        <TouchableOpacity
+          style={[
+            styles.recordButton,
+            isRecording && styles.recordingButton,
+            isProcessing && styles.processingButton
+          ]}
+          onPress={isRecording ? stopRecording : startRecording}
+          disabled={isProcessing}
+        >
+          <Text style={styles.buttonText}>
+            {isProcessing ? 'Processing...' : isRecording ? 'Stop Recording' : 'Start Recording'}
+          </Text>
+        </TouchableOpacity>
+
+        {isRecording && (
+          <Text style={styles.recordingText}>Recording... Speak now!</Text>
+        )}
+
+        {transcript ? (
+          <View style={styles.transcriptBox}>
+            <Text style={styles.transcriptText}>You said: "{transcript}"</Text>
+          </View>
+        ) : null}
+      </View>
+    );
+  }
+
+  // Demo mode (default)
   return (
     <View style={styles.container}>
       <TouchableOpacity
@@ -143,6 +262,27 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
+  // New styles for real recording mode
+  recordButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    borderRadius: 25,
+    minWidth: 200,
+    alignItems: 'center',
+  },
+  recordingButton: {
+    backgroundColor: '#FF3B30',
+  },
+  processingButton: {
+    backgroundColor: '#8E8E93',
+  },
+  recordingText: {
+    marginTop: 10,
+    color: '#FF3B30',
+    fontSize: 14,
+  },
+  // Existing styles
   processing: {
     backgroundColor: '#ffc107',
   },

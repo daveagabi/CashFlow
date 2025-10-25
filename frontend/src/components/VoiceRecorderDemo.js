@@ -15,18 +15,19 @@ const VoiceRecorderDemo = ({ onTranscriptReceived, onTransactionSaved }) => {
     const demoTranscripts = [
       "I sold shoes for 15k",
       "I bought rice for 20k",
-      "I received payment for 50k",
+      "Mama Peter have pay me my 50k",
       "I paid rent for 100k",
       "I sold my phone for 80k",
       "I bought fuel for 5k",
-      "I sold a bag for 25k",
+      "I don sell bag to Customer John for 25k",
       "I paid for electricity 30k",
-      "I sold clothes for 12k",
+      "Sold one jean for 12k",
       "I bought groceries for 8k",
       "I sold books for 18k",
       "I bought medicine for 15k",
-      "I sold laptop for 120k",
-      "I paid for transport 3k"
+      "I don sell three crates of egg 18k",
+      "Took transport 3k",
+      "Mama Joy dey owe me 40k"
     ];
 
     const randomTranscript = demoTranscripts[Math.floor(Math.random() * demoTranscripts.length)];

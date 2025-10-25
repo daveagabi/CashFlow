@@ -2,8 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, Alert, TouchableOpacity, Linking } from 'react-native';
 import VoiceRecorderDemo from '../../src/components/VoiceRecorderDemo';
+import VoiceRecorder from '../../src/components/VoiceRecorder';
 import { getTransactions, getUnsyncedTransactions, clearTransactions, saveTransaction } from '../../src/utils/storage';
 import { syncToBackend, isOnline } from '../../src/utils/syncService';
+import { parseTranscript } from '../../src/utils/api';
 
 export default function HomeScreen() {
   const [messages, setMessages] = useState<string[]>([]);
@@ -11,6 +13,7 @@ export default function HomeScreen() {
   const [unsyncedCount, setUnsyncedCount] = useState(0);
   const [isOnlineStatus, setIsOnlineStatus] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [useRealRecording, setUseRealRecording] = useState(false);
 
   // Load transactions on app start
   useEffect(() => {
@@ -34,8 +37,35 @@ export default function HomeScreen() {
     setIsOnlineStatus(online || false); // Handle null case
   };
 
-  const handleTranscriptReceived = (transcript: string) => {
+  const handleTranscriptReceived = async (transcript: string) => {
     setMessages(prev => [transcript, ...prev]);
+
+    // If using real recording, process the transcript
+    if (useRealRecording) {
+      try {
+        console.log('Received transcript:', transcript);
+
+        // Send to backend for parsing
+        const parsedData = await parseTranscript(transcript);
+        console.log('Parsed data:', parsedData);
+
+        // Save locally
+        const transaction = {
+          ...parsedData,
+          id: Date.now().toString(),
+          timestamp: new Date().toISOString(),
+          synced: false,
+        };
+
+        await saveTransaction(transaction);
+        await loadTransactions(); // Refresh the list
+
+        Alert.alert('Success', 'Transaction saved!');
+      } catch (error) {
+        console.error('Error processing transcript:', error);
+        Alert.alert('Error', 'Failed to process transaction. Please try again.');
+      }
+    }
   };
 
   const handleTransactionSaved = (transaction: any) => {
@@ -216,10 +246,45 @@ export default function HomeScreen() {
         <Text style={styles.subtitle}>Voice-Powered Expense Tracker</Text>
       </View>
 
-      <VoiceRecorderDemo
-        onTranscriptReceived={handleTranscriptReceived}
-        onTransactionSaved={handleTransactionSaved}
-      />
+      {/* Recording Mode Toggle */}
+      <View style={styles.toggleSection}>
+        <Text style={styles.toggleLabel}>Recording Mode:</Text>
+        <View style={styles.toggleButtons}>
+          <TouchableOpacity
+            style={[styles.toggleButton, !useRealRecording && styles.toggleButtonActive]}
+            onPress={() => setUseRealRecording(false)}
+          >
+            <Text style={[styles.toggleButtonText, !useRealRecording && styles.toggleButtonTextActive]}>
+              🎭 Demo
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.toggleButton, useRealRecording && styles.toggleButtonActive]}
+            onPress={() => setUseRealRecording(true)}
+          >
+            <Text style={[styles.toggleButtonText, useRealRecording && styles.toggleButtonTextActive]}>
+              🎤 Real
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Voice Recorder */}
+      {useRealRecording ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Voice Recording (Whisper AI)</Text>
+          <VoiceRecorder
+            useRealRecording={true}
+            onTranscriptReceived={handleTranscriptReceived}
+            onTransactionSaved={handleTransactionSaved}
+          />
+        </View>
+      ) : (
+        <VoiceRecorderDemo
+          onTranscriptReceived={handleTranscriptReceived}
+          onTransactionSaved={handleTransactionSaved}
+        />
+      )}
 
       {/* Quick Summary */}
       {transactions.length > 0 && (
@@ -567,5 +632,80 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#007AFF',
+  },
+  toggleSection: {
+    backgroundColor: 'white',
+    margin: 15,
+    padding: 15,
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  toggleLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  toggleButtons: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  toggleButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#007AFF',
+    backgroundColor: 'white',
+  },
+  toggleButtonActive: {
+    backgroundColor: '#007AFF',
+  },
+  toggleButtonText: {
+    color: '#007AFF',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  toggleButtonTextActive: {
+    color: 'white',
+  },
+  aiInsightsSection: {
+    margin: 15,
+    alignItems: 'center',
+  },
+  aiInsightsButton: {
+    backgroundColor: '#6f42c1',
+    paddingHorizontal: 25,
+    paddingVertical: 15,
+    borderRadius: 25,
+    shadowColor: '#6f42c1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+    marginBottom: 10,
+  },
+  aiInsightsButtonDisabled: {
+    backgroundColor: '#ccc',
+    shadowColor: '#ccc',
+  },
+  aiInsightsButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  aiInsightsHint: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+    fontStyle: 'italic',
+    paddingHorizontal: 20,
   },
 });

@@ -126,23 +126,64 @@ const calculateConfidence = (voiceText, amount, description) => {
 // POST /api/voice/parse - Parse voice input to transaction JSON
 router.post('/parse', async (req, res) => {
   try {
-    const { voiceText, userId } = req.body;
+    const { voiceText, userId, transcript } = req.body;
+    
+    // Support both voiceText and transcript parameters
+    const inputText = voiceText || transcript;
 
-    if (!voiceText || !userId) {
+    if (!inputText) {
       return res.status(400).json({
         error: 'Missing required fields',
-        required: ['voiceText', 'userId']
+        required: ['voiceText or transcript']
       });
     }
 
-    // Parse the voice input
-    const parsedTransaction = parseVoiceToTransaction(voiceText, userId);
+    // Try Python AI first, fallback to JavaScript parsing
+    let parsedTransaction;
+    let aiMethod = 'javascript';
+
+    try {
+      // Initialize Python AI Bridge
+      const PythonAIBridge = require('../ai/python-bridge');
+      const pythonAI = new PythonAIBridge();
+      
+      console.log('🐍 Attempting Python AI parsing...');
+      const pythonResult = await pythonAI.parseTranscript(inputText);
+      
+      if (pythonResult.success && pythonResult.parsed_data) {
+        // Convert Python result to our transaction format
+        parsedTransaction = {
+          amount: pythonResult.parsed_data.amount || 0,
+          description: pythonResult.parsed_data.description || inputText,
+          category: pythonResult.parsed_data.category || 'other',
+          type: pythonResult.parsed_data.type || 'expense',
+          userId: userId || 'unknown',
+          voiceData: inputText,
+          confidence: pythonResult.confidence || 0.5,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          aiMethod: 'python'
+        };
+        aiMethod = 'python';
+        console.log('✅ Python AI parsing successful');
+      } else {
+        throw new Error('Python AI parsing failed');
+      }
+    } catch (pythonError) {
+      console.log('⚠️ Python AI failed, using JavaScript fallback:', pythonError.message);
+      
+      // Fallback to JavaScript parsing
+      parsedTransaction = parseVoiceToTransaction(inputText, userId || 'unknown');
+      parsedTransaction.aiMethod = 'javascript-fallback';
+      aiMethod = 'javascript-fallback';
+    }
 
     res.json({
       success: true,
       message: 'Voice input parsed successfully',
       data: parsedTransaction,
-      originalInput: voiceText
+      originalInput: inputText,
+      aiMethod: aiMethod
     });
 
   } catch (error) {
@@ -346,6 +387,36 @@ router.post('/demo-test', async (req, res) => {
     res.status(500).json({
       error: 'Demo test failed',
       message: error.message
+    });
+  }
+});
+
+// GET /api/voice/test-python-ai - Test Python AI integration
+router.get('/test-python-ai', async (req, res) => {
+  try {
+    console.log('🧪 Testing Python AI integration...');
+    
+    const PythonAIBridge = require('../ai/python-bridge');
+    const pythonAI = new PythonAIBridge();
+    
+    const testResult = await pythonAI.testConnection();
+    
+    res.json({
+      success: true,
+      message: 'Python AI integration test completed',
+      pythonAI: testResult,
+      instructions: {
+        usage: 'POST /api/voice/parse with {"transcript": "I spent $20 on lunch"}',
+        note: 'Replace ai/ai_client.py with your actual AI code'
+      }
+    });
+
+  } catch (error) {
+    console.error('Python AI test error:', error);
+    res.status(500).json({
+      error: 'Python AI test failed',
+      message: error.message,
+      solution: 'Make sure Python is installed and ai/ai_client.py exists'
     });
   }
 });

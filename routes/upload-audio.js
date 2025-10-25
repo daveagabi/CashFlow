@@ -70,13 +70,47 @@ router.post('/', upload.single('audio'), async (req, res) => {
     // Clean up uploaded file
     fs.unlinkSync(req.file.path);
 
-    // Parse the transcription using existing voice parsing logic
+    // Parse the transcription using Python AI first, then fallback
     const { userId } = req.body;
     if (userId) {
       try {
-        // Import the voice parsing function
-        const { parseVoiceToTransaction } = require('./voice');
-        const parsedTransaction = parseVoiceToTransaction(transcription.text, userId);
+        let parsedTransaction;
+        let aiMethod = 'javascript';
+
+        // Try Python AI first
+        try {
+          const PythonAIBridge = require('../ai/python-bridge');
+          const pythonAI = new PythonAIBridge();
+          
+          console.log('🐍 Using Python AI for audio transcription parsing...');
+          const pythonResult = await pythonAI.parseTranscript(transcription.text);
+          
+          if (pythonResult.success && pythonResult.parsed_data) {
+            parsedTransaction = {
+              amount: pythonResult.parsed_data.amount || 0,
+              description: pythonResult.parsed_data.description || transcription.text,
+              category: pythonResult.parsed_data.category || 'other',
+              type: pythonResult.parsed_data.type || 'expense',
+              userId: userId,
+              voiceData: transcription.text,
+              confidence: pythonResult.confidence || 0.5,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              aiMethod: 'python'
+            };
+            aiMethod = 'python';
+          } else {
+            throw new Error('Python AI parsing failed');
+          }
+        } catch (pythonError) {
+          console.log('⚠️ Python AI failed, using JavaScript fallback:', pythonError.message);
+          
+          // Fallback to JavaScript parsing
+          const { parseVoiceToTransaction } = require('./voice');
+          parsedTransaction = parseVoiceToTransaction(transcription.text, userId);
+          parsedTransaction.aiMethod = 'javascript-fallback';
+          aiMethod = 'javascript-fallback';
+        }
         
         res.json({
           success: true,
@@ -84,10 +118,11 @@ router.post('/', upload.single('audio'), async (req, res) => {
           parsedTransaction,
           message: 'Audio transcribed and parsed successfully',
           confidence: parsedTransaction.confidence,
+          aiMethod: aiMethod,
           processingTime: Date.now() - req.startTime
         });
       } catch (parseError) {
-        console.log('⚠️ Parsing failed, returning transcript only:', parseError.message);
+        console.log('⚠️ All parsing failed, returning transcript only:', parseError.message);
         res.json({
           success: true,
           transcript: transcription.text,

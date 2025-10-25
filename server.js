@@ -32,6 +32,31 @@ app.use('/api/sharing', require('./routes/sharing'));
 app.use('/api/logs', require('./routes/logs'));
 app.use('/api/upload-audio', require('./routes/upload-audio'));
 
+// Additional route for upload-audio (as requested)
+const uploadAudioRoute = require('./routes/upload-audio');
+app.use('/upload-audio', uploadAudioRoute);
+
+// Direct routes (without /api prefix) for frontend integration
+app.use('/transactions', require('./routes/transactions'));
+app.use('/parse', require('./routes/voice'));
+app.use('/sync', require('./routes/sync'));
+
+// Weekly summary direct route
+app.get('/weeklySummary/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { format = 'json' } = req.query;
+    
+    // Redirect to the sharing route
+    const sharingRoute = require('./routes/sharing');
+    req.url = `/weeklySummary/${userId}`;
+    req.method = 'GET';
+    sharingRoute(req, res);
+  } catch (error) {
+    res.status(500).json({ error: 'Weekly summary failed', message: error.message });
+  }
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.status(200).json({ 

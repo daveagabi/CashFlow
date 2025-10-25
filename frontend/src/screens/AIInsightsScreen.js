@@ -92,7 +92,7 @@ const AIInsightsScreen = () => {
 
     // OPEN API KEY SETUP
     const openApiSetup = () => {
-        Linking.openURL('https://huggingface.co/settings/tokens');
+        Alert.alert('AI API Key', 'Contact support for AI API key setup instructions.');
     };
 
     // TEST API KEY
@@ -208,7 +208,7 @@ Provide exactly 4 insights in this format:
 
 Keep each insight to 1-2 sentences. Be encouraging but honest. Use Nigerian context and mention Naira amounts.`;
 
-            // Call Hugging Face API
+            // Call AI API
             const response = await fetch(
                 'https://api-inference.huggingface.co/models/gpt2',
                 {
@@ -263,7 +263,7 @@ Keep each insight to 1-2 sentences. Be encouraging but honest. Use Nigerian cont
             {/* HEADER */}
             <View style={styles.header}>
                 <Text style={styles.title}>🤖 AI Finance Insights</Text>
-                <Text style={styles.subtitle}>Get personalized financial advice powered by Google Gemini AI</Text>
+                <Text style={styles.subtitle}>Get personalized financial advice powered by AI</Text>
             </View>
 
             {/* API KEY SECTION */}
@@ -273,19 +273,19 @@ Keep each insight to 1-2 sentences. Be encouraging but honest. Use Nigerian cont
                     onPress={() => setShowApiInput(!showApiInput)}
                 >
                     <Text style={styles.apiKeyToggleText}>
-                        {showApiInput ? '🔒 Hide API Key Setup' : '🔑 Setup Hugging Face API Key'}
+                        {showApiInput ? '🔒 Hide API Key Setup' : '🔑 Setup AI API Key'}
                     </Text>
                 </TouchableOpacity>
 
                 {showApiInput && (
                     <View style={styles.apiKeyInputSection}>
-                        <Text style={styles.apiKeyTitle}>Hugging Face API Key Configuration</Text>
+                        <Text style={styles.apiKeyTitle}>AI API Key Configuration</Text>
                         <Text style={styles.apiKeyInstructions}>
-                            Your Hugging Face API key is pre-configured. You can edit it below if needed.
+                            Enter your AI API key to get personalized financial insights.
                         </Text>
 
                         <TouchableOpacity style={styles.openApiButton} onPress={openApiSetup}>
-                            <Text style={styles.openApiButtonText}>🔗 Get New Hugging Face Token</Text>
+                            <Text style={styles.openApiButtonText}>🔗 Get AI API Key</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.testApiButton} onPress={testApiKey}>
@@ -296,7 +296,7 @@ Keep each insight to 1-2 sentences. Be encouraging but honest. Use Nigerian cont
                             style={styles.apiKeyInput}
                             value={apiKey}
                             onChangeText={setApiKey}
-                            placeholder="Paste your Gemini API key here..."
+                            placeholder="Paste your AI API key here..."
                             secureTextEntry={true}
                             multiline={false}
                         />

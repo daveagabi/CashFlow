@@ -262,7 +262,7 @@ const parseTranscriptLocally = (transcript) => {
 };
 
 // Upload audio to backend for Whisper processing
-export const xxuploadAudioToWhisper = async (audioUri) => {
+export const uploadAudioToWhisper = async (audioUri) => {
   try {
     console.log('Uploading audio from:', audioUri);
 
@@ -294,6 +294,7 @@ export const xxuploadAudioToWhisper = async (audioUri) => {
   }
 };
 
+// Default export for backward compatibility
 export default {
   parseTranscript,
   syncTransactions,
